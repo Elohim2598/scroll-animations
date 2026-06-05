@@ -1,0 +1,928 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sebastian Elohim Perrone — Scroll-Driven Animations</title>
+  <meta name="description" content="Two scroll-driven canvas animation studies by Sebastian Elohim Perrone: Stellar Collapse, a 500-particle polar spiral simulation, and Wave Interference, sinusoidal wave fronts rendered entirely with the Canvas 2D API and zero dependencies."/>
+  <meta name="author" content="Sebastian Elohim Perrone"/>
+  <meta property="og:title" content="Sebastian Elohim Perrone — Scroll-Driven Animations"/>
+  <meta property="og:description" content="Two scroll-driven canvas animation studies: Stellar Collapse and Wave Interference. Canvas 2D API, zero dependencies."/>
+  <meta property="og:type" content="website"/>
+  <meta name="twitter:card" content="summary_large_image"/>
+  <meta name="twitter:title" content="Sebastian Elohim Perrone — Scroll-Driven Animations"/>
+  <meta name="twitter:description" content="Two scroll-driven canvas animation studies: Stellar Collapse and Wave Interference. Canvas 2D API, zero dependencies."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black:   #000000;
+      --surface: #0c0b09;
+      --gold:    #e8a200;
+      --amber:   #ff6a00;
+      --cream:   #f0ebe0;
+      --muted:   rgba(240,235,224,0.4);
+      --border:  rgba(232,162,0,0.1);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+      background: var(--black);
+      color: var(--cream);
+      overflow-x: hidden;
+    }
+
+    code {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 0.82em;
+      color: rgba(232,162,0,0.8);
+    }
+
+#progress {
+      position: fixed;
+      top: 0; left: 0;
+      height: 1px; width: 100%;
+      background: linear-gradient(90deg, var(--gold), var(--amber));
+      transform-origin: left;
+      transform: scaleX(0);
+      z-index: 300;
+    }
+
+.anim-section { position: relative; }
+    #scroll-section-1 { height: 500vh; }
+    #scroll-section-2 { height: 360vh; }
+
+    .sticky-wrap {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .anim-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+    }
+
+.anim-overlay {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
+      user-select: none;
+      width: 100%;
+    }
+
+    .anim-overlay h1,
+    .anim-overlay h2 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: clamp(4.5rem, 13vw, 11rem);
+      font-weight: 400;
+      line-height: 0.9;
+      letter-spacing: -0.025em;
+      background: linear-gradient(180deg, var(--cream) 40%, rgba(240,235,224,0.3) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .anim-overlay .sub {
+      margin-top: 1.75rem;
+      font-size: 0.7rem;
+      font-weight: 400;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: rgba(232,162,0,0.52);
+    }
+
+.hint-author {
+      font-family: 'DM Serif Display', serif;
+      font-size: 0.8rem;
+      font-style: italic;
+      color: rgba(232,162,0,0.45);
+      letter-spacing: 0.03em;
+      margin-bottom: 0.5rem;
+    }
+
+.scroll-hint {
+      position: absolute;
+      bottom: 2.75rem; left: 50%;
+      transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 1rem;
+      pointer-events: none;
+    }
+    .scroll-hint span {
+      font-size: 0.62rem; font-weight: 500;
+      letter-spacing: 0.28em; text-transform: uppercase;
+      color: rgba(232,162,0,0.42);
+    }
+    .scroll-line {
+      width: 1px; height: 56px;
+      background: linear-gradient(to bottom, rgba(232,162,0,0.7), transparent);
+      animation: pulse-line 2.5s ease-in-out infinite;
+    }
+
+.phase-label {
+      position: absolute;
+      top: 5.5rem; left: 0; right: 0;
+      text-align: center;
+      font-size: 0.62rem; font-weight: 500;
+      letter-spacing: 0.32em; text-transform: uppercase;
+      color: rgba(232,162,0,0.52);
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+    }
+
+.anim-index {
+      position: absolute;
+      top: 2.25rem; left: 2.5rem;
+      font-size: 0.6rem; font-weight: 500;
+      letter-spacing: 0.24em; text-transform: uppercase;
+      color: rgba(232,162,0,0.3);
+      pointer-events: none;
+    }
+
+.about {
+      padding: 11rem 2.5rem 9rem;
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 5rem;
+      align-items: start;
+    }
+    @media (max-width: 700px) { .about { grid-template-columns: 1fr; gap: 3rem; } }
+
+    .about-aside { position: sticky; top: 8rem; }
+    .aside-num {
+      font-family: 'DM Serif Display', serif;
+      font-size: 7rem; font-weight: 400; line-height: 1;
+      color: rgba(232,162,0,0.07);
+      user-select: none; letter-spacing: -0.04em;
+    }
+    .aside-rule { width: 32px; height: 1px; background: rgba(232,162,0,0.4); margin: 1.5rem 0 1.25rem; }
+    .aside-label {
+      font-size: 0.65rem; font-weight: 500;
+      letter-spacing: 0.22em; text-transform: uppercase;
+      color: rgba(232,162,0,0.42);
+      margin-bottom: 0.6rem;
+    }
+    .aside-author {
+      display: none;
+    }
+
+    .about-h {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2.25rem, 4.5vw, 3.25rem);
+      font-weight: 400; line-height: 1.12; letter-spacing: -0.015em;
+      color: var(--cream); margin-bottom: 2rem;
+    }
+    .about-h em {
+      font-style: italic;
+      background: linear-gradient(135deg, var(--gold), var(--amber));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .about-p {
+      font-size: 1.05rem; font-weight: 300; line-height: 1.85;
+      color: var(--muted); max-width: 560px; margin-bottom: 1.5rem;
+    }
+
+    .tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 2.5rem; }
+    .tag {
+      padding: 0.3rem 0.875rem;
+      border: 1px solid rgba(232,162,0,0.2); border-radius: 2px;
+      font-size: 0.68rem; font-weight: 500;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: rgba(232,162,0,0.62);
+      transition: border-color 0.25s, color 0.25s;
+    }
+    .tag:hover { border-color: rgba(232,162,0,0.55); color: var(--gold); }
+
+.techniques {
+      padding: 0 2.5rem 11rem;
+      max-width: 1100px; margin: 0 auto;
+    }
+
+    .section-divider {
+      display: flex; align-items: center; gap: 2rem; margin-bottom: 5rem;
+    }
+    .section-divider span {
+      font-size: 0.62rem; font-weight: 500;
+      letter-spacing: 0.24em; text-transform: uppercase;
+      color: rgba(232,162,0,0.38); white-space: nowrap;
+    }
+    .section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1px; border: 1px solid var(--border); background: var(--border);
+    }
+    .tech-card {
+      padding: 2.75rem 2.5rem; background: var(--black);
+      transition: background 0.35s; cursor: default;
+    }
+    .tech-card:hover { background: rgba(232,162,0,0.03); }
+    .card-index {
+      font-size: 0.62rem; font-weight: 500;
+      letter-spacing: 0.22em; color: rgba(232,162,0,0.38); margin-bottom: 2rem;
+    }
+    .card-icon { width: 40px; height: 40px; margin-bottom: 1.5rem; opacity: 0.7; }
+    .tech-card h3 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.6rem; font-weight: 400; color: var(--cream); margin-bottom: 1rem;
+    }
+    .tech-card p { font-size: 0.9rem; font-weight: 300; line-height: 1.75; color: var(--muted); }
+
+.metrics {
+      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      padding: 5rem 2.5rem;
+    }
+    .metrics-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 3rem;
+    }
+    .metric { border-left: 1px solid rgba(232,162,0,0.18); padding-left: 1.5rem; }
+    .metric-val {
+      font-family: 'DM Serif Display', serif;
+      font-size: 3rem; font-weight: 400; letter-spacing: -0.02em;
+      color: var(--cream); line-height: 1; margin-bottom: 0.5rem;
+    }
+    .metric-lbl {
+      font-size: 0.72rem; font-weight: 400;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+    }
+
+.wave-bridge {
+      padding: 9rem 2.5rem 0;
+      max-width: 1100px; margin: 0 auto;
+      display: grid; grid-template-columns: 180px 1fr; gap: 5rem; align-items: start;
+    }
+    @media (max-width: 700px) { .wave-bridge { grid-template-columns: 1fr; gap: 2.5rem; } }
+
+    .wave-bridge .aside-num { color: rgba(232,162,0,0.05); }
+
+    .wave-h {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 400; line-height: 1.1; letter-spacing: -0.015em;
+      color: var(--cream); margin-bottom: 1.75rem;
+    }
+    .wave-h em {
+      font-style: italic;
+      background: linear-gradient(135deg, var(--gold), var(--amber));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .wave-p {
+      font-size: 1rem; font-weight: 300; line-height: 1.85;
+      color: var(--muted); max-width: 520px;
+    }
+
+.statement {
+      padding: 10rem 2.5rem;
+      max-width: 960px; margin: 0 auto;
+    }
+    .statement blockquote {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(1.9rem, 4.5vw, 3.5rem); font-weight: 400;
+      line-height: 1.25; color: var(--cream);
+      position: relative; padding-left: 2rem;
+    }
+    .statement blockquote::before {
+      content: '';
+      position: absolute; left: 0; top: 0.25em; bottom: 0.25em;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--gold), var(--amber));
+    }
+    .statement blockquote em {
+      font-style: italic;
+      background: linear-gradient(135deg, var(--gold), var(--amber));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .statement cite {
+      display: block; margin-top: 2rem; padding-left: 2rem;
+      font-family: 'DM Sans', sans-serif; font-style: normal;
+      font-size: 0.72rem; font-weight: 400;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: rgba(232,162,0,0.38);
+    }
+
+footer {
+      border-top: 1px solid var(--border);
+      padding: 3rem 2.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 1.5rem;
+    }
+    .footer-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.1rem; font-style: italic; font-weight: 400;
+      color: rgba(232,162,0,0.55);
+      letter-spacing: 0.01em;
+    }
+    footer .meta {
+      font-size: 0.72rem; font-weight: 300;
+      color: rgba(240,235,224,0.22); letter-spacing: 0.08em;
+    }
+    .footer-links { display: flex; gap: 2rem; }
+    .footer-links a {
+      font-size: 0.72rem; font-weight: 300;
+      color: rgba(240,235,224,0.22); text-decoration: none;
+      transition: color 0.2s; letter-spacing: 0.06em;
+    }
+    .footer-links a:hover { color: var(--gold); }
+
+@keyframes fade-in  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes pulse-line {
+      0%, 100% { opacity: 0.7; transform: scaleY(1); }
+      50%       { opacity: 0.2; transform: scaleY(0.65); }
+    }
+
+.r {
+      opacity: 0; transform: translateY(30px);
+      transition: opacity 1s cubic-bezier(0.16,1,0.3,1),
+                  transform 1s cubic-bezier(0.16,1,0.3,1);
+    }
+    .r.on { opacity: 1; transform: none; }
+    .d1 { transition-delay: 0.10s; }
+    .d2 { transition-delay: 0.20s; }
+    .d3 { transition-delay: 0.30s; }
+    .d4 { transition-delay: 0.45s; }
+    .d5 { transition-delay: 0.55s; }
+  </style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<section class="anim-section" id="scroll-section-1">
+  <div class="sticky-wrap" id="sticky-1">
+    <canvas class="anim-canvas" id="canvas1"></canvas>
+
+    <div class="anim-index">01 / 02, Stellar Collapse</div>
+
+    <div class="anim-overlay" id="overlay-1" style="animation: fade-in 1.2s cubic-bezier(0.16,1,0.3,1) 0.2s both;">
+      <h1>Stellar<br>Collapse</h1>
+      <p class="sub">A scroll-driven particle simulation</p>
+    </div>
+
+    <div class="scroll-hint" id="hint-1" style="animation: fade-in 1s ease 1.5s both;">
+      <p class="hint-author">Sebastian Elohim Perrone</p>
+      <span>Scroll to begin</span>
+      <div class="scroll-line"></div>
+    </div>
+
+    <div class="phase-label" id="phase-label-1"></div>
+  </div>
+</section>
+
+<section class="about">
+  <div class="about-aside r">
+    <div class="aside-num">01</div>
+    <div class="aside-rule"></div>
+    <div class="aside-label">The experiment</div>
+    <div class="aside-author">Sebastian Elohim Perrone</div>
+  </div>
+  <div>
+    <h2 class="about-h r d1">
+      500 particles.<br>
+      One <em>gravitational</em><br>
+      singularity.
+    </h2>
+    <p class="about-p r d2">
+      Each particle traces a unique spiral trajectory from a random point in space, pulled inward by a shared gravitational centre. As you scroll, the animation timeline advances, gathering, compressing, then releasing in a burst of simulated light.
+    </p>
+    <p class="about-p r d3">
+      No libraries. No WebGL. Everything is drawn with the native <code>Canvas 2D API</code> using polar coordinate math, additive compositing, and motion-trail rendering to simulate plasma physics entirely in software.
+    </p>
+    <div class="tags r d4">
+      <span class="tag">Canvas 2D</span>
+      <span class="tag">Scroll-driven</span>
+      <span class="tag">Additive blending</span>
+      <span class="tag">Polar coordinates</span>
+      <span class="tag">Spiral physics</span>
+      <span class="tag">Zero dependencies</span>
+    </div>
+  </div>
+</section>
+
+<section class="techniques">
+  <div class="section-divider r">
+    <span>01, Techniques</span>
+  </div>
+  <div class="tech-grid">
+
+    <div class="tech-card r d1">
+      <div class="card-index">Technique 01</div>
+      <svg class="card-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M20 20 C20 20 30 10 30 20 C30 30 10 30 10 20 C10 10 25 8 25 20 C25 28 14 28 14 20 C14 14 22 13 22 20"
+              stroke="#e8a200" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+      </svg>
+      <h3>Spiral Physics</h3>
+      <p>Each particle stores its polar origin, radius and angle from centre. The scroll progress drives both the shrinking radius and the cumulative rotation angle, tracing a true Archimedean spiral inward without requiring a physics engine.</p>
+    </div>
+
+    <div class="tech-card r d2">
+      <div class="card-index">Technique 02</div>
+      <svg class="card-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="15" cy="20" r="9" stroke="#e8a200" stroke-width="1.2" fill="rgba(232,162,0,0.06)"/>
+        <circle cx="25" cy="20" r="9" stroke="#ff6a00" stroke-width="1.2" fill="rgba(255,106,0,0.06)"/>
+        <ellipse cx="20" cy="20" rx="4.5" ry="9" fill="rgba(255,200,100,0.18)"/>
+      </svg>
+      <h3>Additive Blending</h3>
+      <p>Composite mode is set to <code>lighter</code>, each particle adds its luminance to whatever sits beneath. Where hundreds of paths converge at the core, light values stack to create a self-illuminating plasma centre without any explicit glow shader.</p>
+    </div>
+
+    <div class="tech-card r d3">
+      <div class="card-index">Technique 03</div>
+      <svg class="card-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="16" y="4" width="8" height="32" rx="4" stroke="#e8a200" stroke-width="1.2"/>
+        <circle cx="20" cy="14" r="2.5" fill="#e8a200" opacity="0.7"/>
+        <path d="M12 22 L6 22 M28 22 L34 22" stroke="#e8a200" stroke-width="1.2" stroke-linecap="round" opacity="0.4"/>
+      </svg>
+      <h3>Scroll Choreography</h3>
+      <p>There is no time-based playback. The entire animation timeline is a pure function of scroll position, scrub forward to collapse the star, scrub back to reverse the infall. The phase transitions between <em>spiral</em>, <em>singularity</em>, and <em>supernova</em> are deterministic.</p>
+    </div>
+
+  </div>
+</section>
+
+<div class="metrics">
+  <div class="metrics-inner">
+    <div class="metric r">
+      <div class="metric-val">500</div>
+      <div class="metric-lbl">Particles</div>
+    </div>
+    <div class="metric r d1">
+      <div class="metric-val">60fps</div>
+      <div class="metric-lbl">Target framerate</div>
+    </div>
+    <div class="metric r d2">
+      <div class="metric-val">0</div>
+      <div class="metric-lbl">Dependencies</div>
+    </div>
+    <div class="metric r d3">
+      <div class="metric-val">3</div>
+      <div class="metric-lbl">Scroll phases</div>
+    </div>
+  </div>
+</div>
+
+<div class="wave-bridge">
+  <div class="about-aside r">
+    <div class="aside-num">02</div>
+    <div class="aside-rule"></div>
+    <div class="aside-label">Second study</div>
+  </div>
+  <div>
+    <h2 class="wave-h r d1">
+      Wave<br><em>Interference</em>
+    </h2>
+    <p class="wave-p r d2">
+      A different primitive, a different logic. Instead of point particles, this study renders overlapping sinusoidal wave fronts, 55 horizontal lines, each oscillating at two frequencies. As scroll advances, the frequencies diverge, pushing the system through emergence, resonance, and peak complexity.
+    </p>
+  </div>
+</div>
+
+<section class="anim-section" id="scroll-section-2">
+  <div class="sticky-wrap" id="sticky-2">
+    <canvas class="anim-canvas" id="canvas2"></canvas>
+
+    <div class="anim-index">02 / 02, Wave Interference</div>
+
+    <div class="anim-overlay" id="overlay-2">
+      <h2>Wave<br>Interference</h2>
+      <p class="sub">Frequency · Resonance · Form</p>
+    </div>
+
+    <div class="phase-label" id="phase-label-2"></div>
+  </div>
+</section>
+
+<section class="techniques">
+  <div class="section-divider r">
+    <span>02, Techniques</span>
+  </div>
+  <div class="tech-grid">
+
+    <div class="tech-card r d1">
+      <div class="card-index">Technique 01</div>
+      
+      <svg class="card-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 20 C6 20 8 8 12 8 C16 8 18 32 22 32 C26 32 28 8 32 8 C36 8 38 20 40 20"
+              stroke="#e8a200" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+        <line x1="2" y1="20" x2="40" y2="20" stroke="#e8a200" stroke-width="0.5" stroke-dasharray="2 3" opacity="0.3"/>
+      </svg>
+      <h3>Polyline Primitives</h3>
+      <p>Each of the 55 wave lines is a single continuous <code>Path2D</code> drawn in 3 px increments across the full canvas width. The rendering primitive is a stroke, not a filled arc, an intentional contrast to the first study's particle dots that changes the entire visual grammar.</p>
+    </div>
+
+    <div class="tech-card r d2">
+      <div class="card-index">Technique 02</div>
+      
+      <svg class="card-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 20 C4 20 5 14 7 14 C9 14 10 26 12 26 C14 26 15 14 17 14 C19 14 20 26 22 26 C24 26 25 14 27 14 C29 14 30 26 32 26 C34 26 35 14 37 14 C39 14 40 20 40 20"
+              stroke="#e8a200" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+        <path d="M2 20 C5 20 6 8 10 8 C14 8 15 32 20 32 C25 32 26 8 30 8 C34 8 35 20 38 20"
+              stroke="#ff6a00" stroke-width="1.0" stroke-linecap="round" fill="none" opacity="0.55"/>
+      </svg>
+      <h3>Frequency Divergence</h3>
+      <p>Two base frequencies, <code>f1</code> and <code>f2</code>, share a ratio that drifts from <code>1.5×</code> to <code>3.7×</code> as scroll advances. When they are close in frequency, long-period beats form across the canvas. As the ratio grows, the interference becomes aperiodic and the pattern breaks into apparent chaos, a third harmonic <code>f3</code> emerges only at peak resonance.</p>
+    </div>
+
+    <div class="tech-card r d3">
+      <div class="card-index">Technique 03</div>
+      
+      <svg class="card-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 24 C7 24 9 16 14 16 C19 16 21 24 26 24 C31 24 33 16 38 16"
+              stroke="#e8a200" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+        <path d="M2 16 C7 16 9 24 14 24 C19 24 21 16 26 16 C31 16 33 24 38 24"
+              stroke="#ff6a00" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+        <circle cx="14" cy="20" r="3" fill="rgba(255,220,100,0.6)" stroke="#e8a200" stroke-width="0.8"/>
+        <circle cx="26" cy="20" r="3" fill="rgba(255,220,100,0.6)" stroke="#e8a200" stroke-width="0.8"/>
+      </svg>
+      <h3>Antinode Highlighting</h3>
+      <p>Each row samples the combined wave sum at its horizontal midpoint. Where the two waves are in phase, a constructive antinode, the sum exceeds a threshold and a second, narrower highlight stroke is drawn on top at higher opacity. Destructive nodes stay dark. The result is a self-organising brightness map that follows the physics of real wave interference rather than being painted manually.</p>
+    </div>
+
+  </div>
+</section>
+
+<section class="statement">
+  <blockquote class="r">
+    "The most compelling animations don't show you motion, they make you <em>feel the physics</em> pulling at the world behind the screen."
+  </blockquote>
+  <cite class="r d1">Principle, Motion-Driven Design</cite>
+</section>
+
+<footer>
+  <div class="footer-name">Sebastian Elohim Perrone</div>
+  <span class="meta">Canvas 2D · JavaScript · 2026</span>
+  <div class="footer-links">
+    <a href="https://sebastian-perrone-portfolio.vercel.app/" target="_blank" rel="noopener noreferrer">Portfolio</a>
+  </div>
+</footer>
+
+<script>
+'use strict';
+
+const lerp    = (a, b, t) => a + (b - a) * t;
+const clamp   = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const easeIO  = t => t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t;
+const easeIn3 = t => t * t * t;
+const easeOut3= t => 1 - Math.pow(1 - t, 3);
+
+const progBar = document.getElementById('progress');
+window.addEventListener('scroll', () => {
+  const total = document.documentElement.scrollHeight - window.innerHeight;
+  progBar.style.transform = `scaleX(${window.scrollY / total})`;
+}, { passive: true });
+
+(function () {
+  const canvas  = document.getElementById('canvas1');
+  const ctx     = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay-1');
+  const hint    = document.getElementById('hint-1');
+  const phLabel = document.getElementById('phase-label-1');
+
+  let W, H;
+  const N = 500;
+  const particles = [];
+
+  function buildParticles() {
+    particles.length = 0;
+    for (let i = 0; i < N; i++) {
+      particles.push({
+        sx: 0, sy: 0, startR: 0, startAngle: 0,
+        spiralRots: 1.8 + Math.random() * 2.8,
+        spiralDir:  Math.random() > 0.5 ? 1 : -1,
+        exAngle: Math.random() * Math.PI * 2,
+        exMag:   0.22 + Math.random() * 0.62,
+        x: 0, y: 0, prevX: 0, prevY: 0,
+        size:       0.35 + Math.random() * 1.5,
+        hue:        15 + Math.random() * 45,
+        brightness: 0.45 + Math.random() * 0.55,
+      });
+    }
+    assignStarts();
+  }
+
+  function assignStarts() {
+    particles.forEach(p => {
+      p.sx = Math.random() * W;
+      p.sy = Math.random() * H;
+      p.x = p.sx; p.y = p.sy;
+      p.prevX = p.sx; p.prevY = p.sy;
+      const dx = p.sx - W / 2, dy = p.sy - H / 2;
+      p.startR     = Math.sqrt(dx * dx + dy * dy);
+      p.startAngle = Math.atan2(dy, dx);
+    });
+  }
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    buildParticles();
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  let rawProg = 0, smoothProg = 0;
+  function getProgress() {
+    const sec  = document.getElementById('scroll-section-1');
+    const top  = sec.getBoundingClientRect().top + window.scrollY;
+    const span = sec.offsetHeight - window.innerHeight;
+    return clamp((window.scrollY - top) / span, 0, 1);
+  }
+  window.addEventListener('scroll', () => { rawProg = getProgress(); }, { passive: true });
+
+  let clock = 0, lastTs = 0;
+
+  function draw(ts) {
+    const dt = Math.min((ts - lastTs) / 1000, 0.05);
+    lastTs = ts; clock += dt;
+
+    smoothProg += (rawProg - smoothProg) * 0.065;
+    const sp = smoothProg;
+
+    const gatherT  = clamp(sp / 0.55,          0, 1);
+    const holdT    = clamp((sp - 0.55) / 0.13, 0, 1);
+    const explodeT = clamp((sp - 0.68) / 0.32, 0, 1);
+    const gE = easeIn3(gatherT);
+    const hE = easeIO(holdT);
+    const eE = easeOut3(explodeT);
+
+ctx.globalCompositeOperation = 'source-over';
+    const clearA = explodeT > 0 ? lerp(0.72, 0.94, eE) : lerp(0.38, 0.68, gE);
+    ctx.fillStyle = `rgba(0,0,0,${clearA})`;
+    ctx.fillRect(0, 0, W, H);
+
+if (gE > 0.35 && eE < 0.85) {
+      const str   = clamp((gE - 0.35) / 0.65, 0, 1) * (1 - eE * 0.9);
+      const pulse = 0.88 + Math.sin(clock * 4.2) * 0.12;
+      const gr    = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.min(W,H) * 0.35 * pulse);
+      gr.addColorStop(0,   `rgba(255,180, 60,${0.20 * str})`);
+      gr.addColorStop(0.25,`rgba(255,110, 10,${0.11 * str})`);
+      gr.addColorStop(0.6, `rgba(180, 60,  0,${0.04 * str})`);
+      gr.addColorStop(1,   'rgba(0,0,0,0)');
+      ctx.fillStyle = gr;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+particles.forEach(p => {
+      p.prevX = p.x; p.prevY = p.y;
+      if (eE > 0) {
+        const dist = Math.min(W, H) * p.exMag * eE;
+        p.x = W/2 + Math.cos(p.exAngle) * dist;
+        p.y = H/2 + Math.sin(p.exAngle) * dist * 0.75;
+      } else if (hE > 0) {
+        const orbitR = 3.5 + Math.sin(clock * 2.8 + p.startAngle * 3) * 2;
+        const orbitA = p.startAngle + p.spiralDir * clock * (0.9 + p.spiralRots * 0.18);
+        p.x = W/2 + Math.cos(orbitA) * orbitR;
+        p.y = H/2 + Math.sin(orbitA) * orbitR * 0.45;
+      } else {
+        const r     = p.startR * (1 - gE);
+        const angle = p.startAngle + p.spiralDir * gE * Math.PI * 2 * p.spiralRots;
+        p.x = W/2 + Math.cos(angle) * r;
+        p.y = H/2 + Math.sin(angle) * r * 0.5;
+      }
+    });
+
+ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+
+particles.forEach(p => {
+      const dx = p.x - p.prevX, dy = p.y - p.prevY;
+      const spd = Math.sqrt(dx*dx + dy*dy);
+      if (spd < 0.3) return;
+      const a = clamp(spd * 0.022, 0.008, 0.22) * p.brightness * (eE > 0 ? clamp(1 - eE * 0.9, 0, 1) : 1);
+      if (a < 0.005) return;
+      ctx.beginPath(); ctx.moveTo(p.prevX, p.prevY); ctx.lineTo(p.x, p.y);
+      ctx.strokeStyle = `hsla(${p.hue},100%,72%,${a})`;
+      ctx.lineWidth = p.size * 0.55; ctx.stroke();
+    });
+
+particles.forEach(p => {
+      const a = clamp(0.1 + gE * 0.9, 0, 1) * p.brightness * clamp(1 - eE * 0.85, 0.15, 1);
+      if (a < 0.01) return;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 6, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${p.hue},100%,55%,${a * 0.028})`; ctx.fill();
+    });
+
+particles.forEach(p => {
+      const a = clamp(0.15 + gE * 0.85, 0, 1) * p.brightness * clamp(1 - eE * 0.78, 0.22, 1);
+      if (a < 0.015) return;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 2.2, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${p.hue+12},95%,68%,${a * 0.18})`; ctx.fill();
+    });
+
+particles.forEach(p => {
+      const a = clamp(0.08 + gE * 0.92, 0, 1) * p.brightness * clamp(1 - eE * 0.72, 0.28, 1);
+      if (a < 0.02) return;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 0.65, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(${p.hue+25},60%,96%,${a * 0.75})`; ctx.fill();
+    });
+
+    ctx.globalCompositeOperation = 'source-over';
+
+if (hE > 0.2 && eE < 0.05) {
+      const str   = clamp((hE - 0.2) * 1.25, 0, 1);
+      const pulse = 0.85 + Math.sin(clock * 8) * 0.15;
+      const gr    = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, 28 * pulse);
+      gr.addColorStop(0,   `rgba(255,250,220,${0.95 * str})`);
+      gr.addColorStop(0.35,`rgba(255,180, 60,${0.50 * str})`);
+      gr.addColorStop(1,   'rgba(0,0,0,0)');
+      ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+    }
+
+if (eE > 0 && eE < 0.3) {
+      const flash = easeOut3(1 - eE / 0.3);
+      ctx.fillStyle = `rgba(255,220,140,${flash * 0.55})`;
+      ctx.fillRect(0, 0, W, H);
+      ctx.beginPath(); ctx.arc(W/2, H/2, Math.min(W,H) * 0.6 * (eE / 0.3), 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255,200,100,${flash * 0.25})`; ctx.lineWidth = 2; ctx.stroke();
+    }
+
+const vig = ctx.createRadialGradient(W/2, H/2, H*0.18, W/2, H/2, H*0.92);
+    vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.88)');
+    ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
+
+hint.style.opacity    = String(clamp(1 - gE * 4, 0, 1));
+    overlay.style.opacity = String(clamp(1 - gE * 2.5, 0, 1));
+
+let lbl = '', lblA = 0;
+    if (gE > 0.04 && gE < 0.96 && hE < 0.1 && eE < 0.05) {
+      lbl = 'COLLAPSING'; lblA = clamp(gE * 3, 0, 1) * clamp((0.96 - gE) * 10, 0, 1);
+    } else if (hE > 0.15 && eE < 0.12) {
+      lbl = 'SINGULARITY'; lblA = clamp((hE - 0.15) * 2.5, 0, 1) * clamp(1 - eE * 8, 0, 1);
+    } else if (eE > 0.06 && eE < 0.85) {
+      lbl = 'SUPERNOVA'; lblA = clamp((eE - 0.06) * 5, 0, 1) * clamp((0.85 - eE) * 4, 0, 1);
+    }
+    phLabel.textContent = lbl; phLabel.style.opacity = String(lblA);
+
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+})();
+
+(function () {
+  const canvas  = document.getElementById('canvas2');
+  const ctx     = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay-2');
+  const phLabel = document.getElementById('phase-label-2');
+
+  let W, H;
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  let rawProg = 0, smoothProg = 0;
+  function getProgress() {
+    const sec  = document.getElementById('scroll-section-2');
+    const top  = sec.getBoundingClientRect().top + window.scrollY;
+    const span = sec.offsetHeight - window.innerHeight;
+    return clamp((window.scrollY - top) / span, 0, 1);
+  }
+  window.addEventListener('scroll', () => { rawProg = getProgress(); }, { passive: true });
+
+  let clock = 0, lastTs = 0;
+  const LINES  = 55;
+  const SPEED  = 0.55; 
+
+  function draw(ts) {
+    const dt = Math.min((ts - lastTs) / 1000, 0.05);
+    lastTs = ts; clock += dt * SPEED;
+
+    smoothProg += (rawProg - smoothProg) * 0.065;
+    const sp = smoothProg;
+
+const emergeT   = clamp(sp / 0.30,          0, 1);
+    const intensifyT = clamp((sp - 0.30) / 0.42, 0, 1);
+    const peakT      = clamp((sp - 0.72) / 0.28, 0, 1);
+
+    const eE = easeIO(emergeT);
+    const iE = easeIO(intensifyT);
+    const pE = easeIO(peakT);
+
+ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+
+    const lineSpacing = H / (LINES + 1);
+    const maxAmp = lineSpacing * 0.58 * eE;
+
+const f1 = lerp(1.2, 4.8, iE);
+    const f2 = f1 * lerp(1.5, 3.7, iE);
+    
+    const f3 = f1 * lerp(0, 5.2, pE);
+    const amp3 = pE * 0.22;
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    for (let i = 0; i < LINES; i++) {
+      const baseY  = (i + 1) * lineSpacing;
+      const rowN   = i / (LINES - 1); 
+      const t      = clock;
+
+const ph1 = rowN * Math.PI * 3.1;
+      const ph2 = rowN * Math.PI * 4.7;
+      const ph3 = rowN * Math.PI * 2.0;
+
+      ctx.beginPath();
+      const step = 3;
+      for (let x = 0; x <= W; x += step) {
+        const nx = x / W;
+        const w1 = Math.sin(nx * f1 * Math.PI * 2 + ph1 + t)         * maxAmp;
+        const w2 = Math.sin(nx * f2 * Math.PI * 2 - ph2 - t * 0.71)  * maxAmp * 0.40;
+        const w3 = Math.sin(nx * f3 * Math.PI * 2 + ph3 + t * 1.19)  * maxAmp * amp3;
+        const y  = baseY + w1 + w2 + w3;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+
+const hue       = lerp(38, 22, rowN);
+      const centrality = Math.sin(rowN * Math.PI);               
+      const baseAlpha  = (0.06 + centrality * 0.22) * eE;
+
+const midNx     = 0.5;
+      const midW1     = Math.sin(midNx * f1 * Math.PI * 2 + ph1 + clock);
+      const midW2     = Math.sin(midNx * f2 * Math.PI * 2 - ph2 - clock * 0.71);
+      const constructive = (midW1 + midW2 * 0.4 + 1.4) / 2.8;  
+      const alpha      = baseAlpha * (0.6 + constructive * 0.9);
+
+      const lum = Math.floor(44 + rowN * 18);
+      ctx.strokeStyle = `hsla(${hue}, 95%, ${lum}%, ${alpha})`;
+
+ctx.lineWidth = 0.7 + centrality * 0.9;
+      ctx.stroke();
+
+if (eE > 0.5 && constructive > 0.65) {
+        ctx.beginPath();
+        for (let x = 0; x <= W; x += step) {
+          const nx = x / W;
+          const w1 = Math.sin(nx * f1 * Math.PI * 2 + ph1 + clock)        * maxAmp;
+          const w2 = Math.sin(nx * f2 * Math.PI * 2 - ph2 - clock * 0.71) * maxAmp * 0.40;
+          const w3 = Math.sin(nx * f3 * Math.PI * 2 + ph3 + clock * 1.19) * maxAmp * amp3;
+          const y  = baseY + w1 + w2 + w3;
+          if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        const highlightA = (constructive - 0.65) * 0.35 * (eE - 0.5) * 2;
+        ctx.strokeStyle = `hsla(${hue + 12}, 100%, 88%, ${highlightA})`;
+        ctx.lineWidth = 0.4;
+        ctx.stroke();
+      }
+    }
+
+const vigR = ctx.createRadialGradient(W/2, H/2, H * 0.22, W/2, H/2, Math.max(W, H) * 0.72);
+    vigR.addColorStop(0, 'rgba(0,0,0,0)');
+    vigR.addColorStop(1, 'rgba(0,0,0,0.92)');
+    ctx.fillStyle = vigR;
+    ctx.fillRect(0, 0, W, H);
+
+if (eE > 0.3) {
+      const scanY = H / 2;
+      const scanGrd = ctx.createLinearGradient(0, scanY - H*0.12, 0, scanY + H*0.12);
+      scanGrd.addColorStop(0,   'rgba(0,0,0,0)');
+      scanGrd.addColorStop(0.5, `rgba(232,162,0,${0.03 * eE})`);
+      scanGrd.addColorStop(1,   'rgba(0,0,0,0)');
+      ctx.fillStyle = scanGrd;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+overlay.style.opacity = String(clamp(1 - eE * 2.8, 0, 1));
+
+let lbl = '', lblA = 0;
+    if (eE > 0.06 && eE < 0.9 && iE < 0.08) {
+      lbl = 'EMERGING';    lblA = clamp(eE * 4, 0, 1);
+    } else if (iE > 0.08 && iE < 0.92 && pE < 0.08) {
+      lbl = 'RESONATING';  lblA = clamp(iE * 2, 0, 1) * clamp((0.92 - iE) * 4, 0, 1);
+    } else if (pE > 0.08) {
+      lbl = 'PEAK RESONANCE'; lblA = clamp((pE - 0.08) * 4, 0, 1) * clamp((1 - pE) * 4, 0, 1);
+    }
+    phLabel.textContent = lbl; phLabel.style.opacity = String(lblA);
+
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+})();
+
+const io = new IntersectionObserver(
+  entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('on'); }),
+  { threshold: 0.1 }
+);
+document.querySelectorAll('.r').forEach(el => io.observe(el));
+</script>
+</body>
+</html>
+
+
