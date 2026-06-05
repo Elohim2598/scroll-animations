@@ -161,6 +161,7 @@
     @media (max-width: 700px) { .about { grid-template-columns: 1fr; gap: 3rem; } }
 
     .about-aside { position: sticky; top: 8rem; }
+    @media (max-width: 700px) { .about-aside { position: static; } }
     .aside-num {
       font-family: 'DM Serif Display', serif;
       font-size: 7rem; font-weight: 400; line-height: 1;
@@ -553,6 +554,27 @@ footer {
 
   </div>
 </section>
+
+<div class="metrics">
+  <div class="metrics-inner">
+    <div class="metric r">
+      <div class="metric-val">55</div>
+      <div class="metric-lbl">Wave lines</div>
+    </div>
+    <div class="metric r d1">
+      <div class="metric-val">3</div>
+      <div class="metric-lbl">Frequencies</div>
+    </div>
+    <div class="metric r d2">
+      <div class="metric-val">2</div>
+      <div class="metric-lbl">Render passes per line</div>
+    </div>
+    <div class="metric r d3">
+      <div class="metric-val">0</div>
+      <div class="metric-lbl">Dependencies</div>
+    </div>
+  </div>
+</div>
 
 <section class="statement">
   <blockquote class="r">
